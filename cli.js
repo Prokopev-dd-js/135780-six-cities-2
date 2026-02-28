@@ -4,6 +4,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import chalk from 'chalk';
 import { fileURLToPath } from 'node:url';
+import logger from './src/logger.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -200,3 +201,6 @@ try {
   console.error(chalk.bgRedBright(err.message));
   process.exitCode = 1;
 }
+
+logger.info('Приложение запущено');
+logger.error('Произошла ошибка');
