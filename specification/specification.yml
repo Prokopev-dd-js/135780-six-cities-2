@@ -1,0 +1,789 @@
+﻿openapi: 3.0.3
+info:
+  title: Six Cities API
+  version: 1.0.0
+  description: REST API for the Six Cities project.
+servers:
+  - url: http://localhost:5000/api
+    description: Local development server
+tags:
+  - name: users
+    description: User registration and authentication
+  - name: offers
+    description: Offer management and listing
+  - name: comments
+    description: Offer comments
+
+paths:
+  /users/register:
+    post:
+      tags:
+        - users
+      summary: Register a new user
+      operationId: registerUser
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/NewUser'
+      responses:
+        '201':
+          description: User created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '409':
+          description: User with this email already exists
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /users/login:
+    post:
+      tags:
+        - users
+      summary: Login user and return access token
+      operationId: loginUser
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginUser'
+      responses:
+        '200':
+          description: Login successful
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TokenPayload'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+    get:
+      tags:
+        - users
+      summary: Check user authentication status
+      operationId: getAuthStatus
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Authorized user profile
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /users/logout:
+    post:
+      tags:
+        - users
+      summary: Logout user
+      operationId: logoutUser
+      security:
+        - bearerAuth: []
+      responses:
+        '204':
+          description: Logout successful
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /offers:
+    get:
+      tags:
+        - offers
+      summary: Get offers list
+      operationId: getOffers
+      parameters:
+        - $ref: '#/components/parameters/Limit'
+      responses:
+        '200':
+          description: Offers list sorted by publication date desc
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/OfferSummary'
+    post:
+      tags:
+        - offers
+      summary: Create a new offer
+      operationId: createOffer
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/NewOffer'
+      responses:
+        '201':
+          description: Created offer
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OfferDetail'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /offers/{offerId}:
+    get:
+      tags:
+        - offers
+      summary: Get offer details
+      operationId: getOfferById
+      parameters:
+        - $ref: '#/components/parameters/OfferId'
+      responses:
+        '200':
+          description: Offer details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OfferDetail'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    patch:
+      tags:
+        - offers
+      summary: Update offer
+      operationId: updateOffer
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/OfferId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateOffer'
+      responses:
+        '200':
+          description: Updated offer
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OfferDetail'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    delete:
+      tags:
+        - offers
+      summary: Delete offer
+      operationId: deleteOffer
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/OfferId'
+      responses:
+        '204':
+          description: Offer deleted
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /offers/premium/{city}:
+    get:
+      tags:
+        - offers
+      summary: Get premium offers by city
+      operationId: getPremiumOffersByCity
+      parameters:
+        - $ref: '#/components/parameters/City'
+      responses:
+        '200':
+          description: Up to 3 premium offers sorted by publication date desc
+          content:
+            application/json:
+              schema:
+                type: array
+                maxItems: 3
+                items:
+                  $ref: '#/components/schemas/OfferSummary'
+
+  /offers/favorites:
+    get:
+      tags:
+        - offers
+      summary: Get favorite offers for authorized user
+      operationId: getFavoriteOffers
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Favorite offers list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/OfferSummary'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /offers/{offerId}/favorite:
+    post:
+      tags:
+        - offers
+      summary: Add offer to favorites
+      operationId: addOfferToFavorites
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/OfferId'
+      responses:
+        '200':
+          description: Updated offer state
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OfferDetail'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    delete:
+      tags:
+        - offers
+      summary: Remove offer from favorites
+      operationId: removeOfferFromFavorites
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/OfferId'
+      responses:
+        '200':
+          description: Updated offer state
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OfferDetail'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /offers/{offerId}/comments:
+    get:
+      tags:
+        - comments
+      summary: Get comments for offer
+      operationId: getCommentsByOfferId
+      parameters:
+        - $ref: '#/components/parameters/OfferId'
+      responses:
+        '200':
+          description: Up to 50 latest comments sorted by publication date desc
+          content:
+            application/json:
+              schema:
+                type: array
+                maxItems: 50
+                items:
+                  $ref: '#/components/schemas/Comment'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    post:
+      tags:
+        - comments
+      summary: Create comment for offer
+      operationId: createComment
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/OfferId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/NewComment'
+      responses:
+        '201':
+          description: Comment created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Comment'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  parameters:
+    OfferId:
+      name: offerId
+      in: path
+      required: true
+      description: Offer identifier
+      schema:
+        type: string
+        pattern: '^[a-fA-F0-9]{24}$'
+    City:
+      name: city
+      in: path
+      required: true
+      schema:
+        $ref: '#/components/schemas/City'
+    Limit:
+      name: limit
+      in: query
+      required: false
+      description: Number of offers to return (default 60)
+      schema:
+        type: integer
+        minimum: 1
+        maximum: 100
+        default: 60
+
+  responses:
+    BadRequest:
+      description: Validation error
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    Unauthorized:
+      description: Authentication required or invalid token
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    Forbidden:
+      description: Access denied
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    NotFound:
+      description: Resource not found
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+
+  schemas:
+    City:
+      type: string
+      enum:
+        - Paris
+        - Cologne
+        - Brussels
+        - Amsterdam
+        - Hamburg
+        - Dusseldorf
+
+    OfferType:
+      type: string
+      enum:
+        - apartment
+        - house
+        - room
+        - hotel
+
+    UserType:
+      type: string
+      enum:
+        - обычный
+        - pro
+
+    Goods:
+      type: string
+      enum:
+        - Breakfast
+        - Air conditioning
+        - Laptop friendly workspace
+        - Baby seat
+        - Washer
+        - Towels
+        - Fridge
+
+    Coordinates:
+      type: object
+      required:
+        - latitude
+        - longitude
+      properties:
+        latitude:
+          type: number
+          format: float
+        longitude:
+          type: number
+          format: float
+
+    User:
+      type: object
+      required:
+        - id
+        - name
+        - email
+        - avatarUrl
+        - type
+      properties:
+        id:
+          type: string
+          pattern: '^[a-fA-F0-9]{24}$'
+        name:
+          type: string
+          minLength: 1
+          maxLength: 15
+        email:
+          type: string
+          format: email
+        avatarUrl:
+          type: string
+          format: uri
+        type:
+          $ref: '#/components/schemas/UserType'
+
+    NewUser:
+      type: object
+      required:
+        - name
+        - email
+        - password
+        - type
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 15
+        email:
+          type: string
+          format: email
+        avatarUrl:
+          type: string
+          format: uri
+          pattern: '^https?:\/\/.*\.(jpg|png)$'
+        password:
+          type: string
+          minLength: 6
+          maxLength: 12
+        type:
+          $ref: '#/components/schemas/UserType'
+
+    LoginUser:
+      type: object
+      required:
+        - email
+        - password
+      properties:
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+          minLength: 6
+          maxLength: 12
+
+    TokenPayload:
+      type: object
+      required:
+        - token
+      properties:
+        token:
+          type: string
+
+    OfferSummary:
+      type: object
+      required:
+        - id
+        - title
+        - type
+        - price
+        - city
+        - previewImage
+        - isPremium
+        - isFavorite
+        - rating
+        - publicationDate
+        - commentsCount
+      properties:
+        id:
+          type: string
+          pattern: '^[a-fA-F0-9]{24}$'
+        title:
+          type: string
+          minLength: 10
+          maxLength: 100
+        type:
+          $ref: '#/components/schemas/OfferType'
+        price:
+          type: integer
+          minimum: 100
+          maximum: 100000
+        city:
+          $ref: '#/components/schemas/City'
+        previewImage:
+          type: string
+          format: uri
+        isPremium:
+          type: boolean
+        isFavorite:
+          type: boolean
+        rating:
+          type: number
+          minimum: 0
+          maximum: 5
+        publicationDate:
+          type: string
+          format: date-time
+        commentsCount:
+          type: integer
+          minimum: 0
+
+    OfferDetail:
+      allOf:
+        - $ref: '#/components/schemas/OfferSummary'
+        - type: object
+          required:
+            - description
+            - images
+            - bedrooms
+            - maxAdults
+            - goods
+            - host
+            - coordinates
+          properties:
+            description:
+              type: string
+              minLength: 20
+              maxLength: 1024
+            images:
+              type: array
+              minItems: 6
+              maxItems: 6
+              items:
+                type: string
+                format: uri
+            bedrooms:
+              type: integer
+              minimum: 1
+              maximum: 8
+            maxAdults:
+              type: integer
+              minimum: 1
+              maximum: 10
+            goods:
+              type: array
+              minItems: 1
+              items:
+                $ref: '#/components/schemas/Goods'
+            host:
+              $ref: '#/components/schemas/User'
+            coordinates:
+              $ref: '#/components/schemas/Coordinates'
+
+    NewOffer:
+      type: object
+      required:
+        - title
+        - description
+        - publicationDate
+        - city
+        - previewImage
+        - images
+        - isPremium
+        - isFavorite
+        - rating
+        - type
+        - bedrooms
+        - maxAdults
+        - price
+        - goods
+        - coordinates
+      properties:
+        title:
+          type: string
+          minLength: 10
+          maxLength: 100
+        description:
+          type: string
+          minLength: 20
+          maxLength: 1024
+        publicationDate:
+          type: string
+          format: date-time
+        city:
+          $ref: '#/components/schemas/City'
+        previewImage:
+          type: string
+          format: uri
+        images:
+          type: array
+          minItems: 6
+          maxItems: 6
+          items:
+            type: string
+            format: uri
+        isPremium:
+          type: boolean
+        isFavorite:
+          type: boolean
+        rating:
+          type: number
+          minimum: 0
+          maximum: 5
+        type:
+          $ref: '#/components/schemas/OfferType'
+        bedrooms:
+          type: integer
+          minimum: 1
+          maximum: 8
+        maxAdults:
+          type: integer
+          minimum: 1
+          maximum: 10
+        price:
+          type: integer
+          minimum: 100
+          maximum: 100000
+        goods:
+          type: array
+          minItems: 1
+          items:
+            $ref: '#/components/schemas/Goods'
+        coordinates:
+          $ref: '#/components/schemas/Coordinates'
+
+    UpdateOffer:
+      type: object
+      minProperties: 1
+      properties:
+        title:
+          type: string
+          minLength: 10
+          maxLength: 100
+        description:
+          type: string
+          minLength: 20
+          maxLength: 1024
+        publicationDate:
+          type: string
+          format: date-time
+        city:
+          $ref: '#/components/schemas/City'
+        previewImage:
+          type: string
+          format: uri
+        images:
+          type: array
+          minItems: 6
+          maxItems: 6
+          items:
+            type: string
+            format: uri
+        isPremium:
+          type: boolean
+        isFavorite:
+          type: boolean
+        rating:
+          type: number
+          minimum: 0
+          maximum: 5
+        type:
+          $ref: '#/components/schemas/OfferType'
+        bedrooms:
+          type: integer
+          minimum: 1
+          maximum: 8
+        maxAdults:
+          type: integer
+          minimum: 1
+          maximum: 10
+        price:
+          type: integer
+          minimum: 100
+          maximum: 100000
+        goods:
+          type: array
+          minItems: 1
+          items:
+            $ref: '#/components/schemas/Goods'
+        coordinates:
+          $ref: '#/components/schemas/Coordinates'
+
+    Comment:
+      type: object
+      required:
+        - id
+        - text
+        - publicationDate
+        - rating
+        - user
+      properties:
+        id:
+          type: string
+          pattern: '^[a-fA-F0-9]{24}$'
+        text:
+          type: string
+          minLength: 5
+          maxLength: 1024
+        publicationDate:
+          type: string
+          format: date-time
+        rating:
+          type: integer
+          minimum: 1
+          maximum: 5
+        user:
+          $ref: '#/components/schemas/User'
+
+    NewComment:
+      type: object
+      required:
+        - text
+        - rating
+      properties:
+        text:
+          type: string
+          minLength: 5
+          maxLength: 1024
+        rating:
+          type: integer
+          minimum: 1
+          maximum: 5
+
+    Error:
+      type: object
+      required:
+        - message
+      properties:
+        message:
+          type: string
+        details:
+          type: array
+          items:
+            type: string
